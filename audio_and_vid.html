@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audio Recorder</title>
+
+<style>
+    body {
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f0f0f0;
+    }
+
+    .video-container {
+        position: relative;
+        width: 50%;
+        height: auto;
+    }
+
+    .video-container video {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: auto;
+        transition: opacity 0.5s ease-in-out;
+    }
+
+    .hidden {
+        opacity: 0;
+    }
+</style>
+
+</head>
+<body>
+
+    <div class="video-container">
+        <video id="video1" class="visible" controls  >
+            <source src="video1.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    
+        <video id="video2" class="hidden" controls autoplay onended="handleVideoEnded()">
+            <source src="" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+
+<button id="recordButton">Start Recording (Press 'r')</button>
+
+<script>
+    let mediaRecorder;
+    let chunks = [];
+    let isRecording = false;
+    let newVideo = false;
+    let prevExists = false;
+    
+    const recordButton = document.getElementById('recordButton');
+
+    recordButton.addEventListener('click', toggleRecording);
+
+    document.addEventListener('keydown', function(event) {
+        if (event.code === 'KeyR' && event.type === 'keydown') {
+            toggleRecording();
+        }
+    });
+
+    async function toggleRecording() {
+        if (!isRecording) {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = handleDataAvailable;
+            mediaRecorder.start();
+            console.log('Recording started');
+            recordButton.textContent = 'Stop Recording (Press \'r\')';
+        } else {
+            mediaRecorder.stop();
+            console.log('Recording stopped');
+            recordButton.textContent = 'Start Recording (Press \'r\')';
+        }
+        
+        isRecording = !isRecording;
+    }
+
+    function handleDataAvailable(event) {
+        chunks.push(event.data);
+        if (mediaRecorder.state === 'inactive') {
+            saveRecording();
+        }
+    }
+
+    async function saveRecording() {
+        const blob = new Blob(chunks, { type: 'audio/wav' });
+        const formData = new FormData();
+        formData.append('audio', blob, 'recording.wav');
+
+        try {
+            const response = await fetch('http://localhost:8000/upload_audio/', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to save recording');
+            }
+
+            console.log('Recording saved successfully');
+        } catch (error) {
+            console.error('Error saving recording:', error);
+        }
+
+        chunks = []; // Clear the chunks array for next recording
+    }
+
+
+    function pollBackend() {
+        setInterval(async () => {
+            try {
+                const response = await fetch('http://localhost:8000/check_file_existence');
+                const data = await response.json();
+                console.log('Received data from backend:', data);
+                
+                if (data.fileExists != prevExists) {
+                    // document.body.innerHTML = "NEW VIDEO DONE!";
+                    
+                    switchVideos();
+                }
+                prevExists = data.fileExists;
+            } catch (error) {
+                console.error('Error polling backend:', error);
+            }
+        }, 500); // Poll every 0.5 seconds
+    }
+
+    let currentVideo = 1;
+    const video1 = document.getElementById('video1');
+    const video2 = document.getElementById('video2');
+    
+    async function handleVideoEnded() {
+        video2.pause();
+
+        console.log('Video ended');
+        await fetch('http://localhost:8000/delete_video')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to delete video');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('File deleted:', data);
+                // Perform actions after video ends
+            })
+            .catch(error => {
+                console.error('Error deleting video:', error);
+            });
+
+            video2.src = "";
+            // video2.classList.add('hidden');
+            // video1.classList.remove('hidden');
+            video1.style.display = "block";
+            video2.style.display = "none";
+            video1.play();
+
+    }
+    function switchVideos() {
+        video2.src = 'may_translate.mp4'
+        video1.classList.add('hidden');
+        video2.classList.remove('hidden');
+        video2.style.display = "block";
+        video1.style.display = "none";
+        video1.pause();
+        video2.play();
+        currentVideo = 2;
+    }
+
+    pollBackend();
+
+</script>
+</body>
+</html>

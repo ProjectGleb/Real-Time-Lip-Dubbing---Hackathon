@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MP4 Player with Overlay Effect</title>
+<style>
+    body {
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f0f0f0;
+    }
+
+    .video-container {
+        position: relative;
+        width: 50%;
+        height: auto;
+    }
+
+    .video-container video {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: auto;
+        transition: opacity 0.5s ease-in-out;
+    }
+
+    .hidden {
+        opacity: 0;
+    }
+</style>
+</head>
+<body>
+<div class="video-container">
+    <video id="video1" class="visible" controls autoplay>
+        <source src="video1.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <video id="video2" class="hidden" controls>
+        <source src="video2.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+</div>
+
+<script>
+    let currentVideo = 1;
+    const video1 = document.getElementById('video1');
+    const video2 = document.getElementById('video2');
+
+    document.addEventListener('keydown', function(event) {
+        if (event.code === 'Space') {
+            if (currentVideo === 1) {
+                video1.classList.add('hidden');
+                video2.classList.remove('hidden');
+                video1.pause();
+                video2.play();
+                currentVideo = 2;
+            } else {
+                video1.classList.remove('hidden');
+                video2.classList.add('hidden');
+                video2.pause();
+                video1.play();
+                currentVideo = 1;
+            }
+        }
+    });
+</script>
+</body>
+</html>

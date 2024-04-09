@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Recorder</title>
+</head>
+<body>
+  <video id="videoElement" width="640" height="480" autoplay muted></video>
+  <script>
+    let stream;
+    let recorder;
+    const videoElement = document.getElementById('videoElement');
+
+    async function startRecording() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        videoElement.srcObject = stream;
+        recorder = new MediaRecorder(stream);
+        const chunks = [];
+
+        recorder.ondataavailable = event => {
+          chunks.push(event.data);
+        };
+
+        recorder.onstop = async () => {
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          const formData = new FormData();
+          formData.append('video', blob, 'recorded.webm');
+
+          try {
+            const response = await fetch('http://localhost:8000/translate', {
+              method: 'POST',
+              body: formData
+            });
+
+            if (response.ok) {
+              console.log('Video sent to API successfully.');
+            } else {
+              console.error('Failed to send video to API.');
+            }
+          } catch (error) {
+            console.error('Error sending video to API:', error);
+          }
+        };
+
+        recorder.start();
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+      }
+    }
+
+    function stopRecording() {
+      recorder.stop();
+      stream.getTracks().forEach(track => track.stop());
+    }
+
+    document.addEventListener('keydown', event => {
+      if (event.code === 'Space') {
+        startRecording();
+      }
+    });
+
+    document.addEventListener('keyup', event => {
+      if (event.code === 'Space') {
+        stopRecording();
+      }
+    });
+  </script>
+</body>
+</html>

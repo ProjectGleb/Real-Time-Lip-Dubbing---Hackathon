@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Metaverse</title>
+</head>
+<body>
+
+<video id="video" width="320" height="240" autoplay></video>
+<button id="startRecord">Start Recording</button>
+<button id="stopRecord" disabled>Stop Recording</button>
+
+<script>
+let mediaRecorder;
+let recordedBlobs;
+
+document.getElementById('startRecord').addEventListener('click', () => {
+    navigator.mediaDevices.getUserMedia({video: true, audio: true})
+        .then(stream => {
+            document.getElementById('video').srcObject = stream;
+            recordedBlobs = [];
+            mediaRecorder = new MediaRecorder(stream, {mimeType: 'video/webm; codecs=vp8'});
+            mediaRecorder.ondataavailable = event => {
+                if (event.data && event.data.size > 0) {
+                    recordedBlobs.push(event.data);
+                }
+            };
+            mediaRecorder.start();
+            console.log('MediaRecorder started', mediaRecorder);
+            document.getElementById('stopRecord').disabled = false;
+            document.getElementById('startRecord').disabled = true;
+        });
+});
+
+document.getElementById('stopRecord').addEventListener('click', () => {
+    mediaRecorder.stop();
+    document.getElementById('video').srcObject.getTracks().forEach(track => track.stop());
+    document.getElementById('stopRecord').disabled = true;
+
+    const blob = new Blob(recordedBlobs, {type: 'video/mp4; codecs=vp8'});
+    const formData = new FormData();
+    formData.append('video', blob);
+
+
+    fetch('http://localhost:8000/translate', {
+        method: 'POST',
+        body: formData,
+    })
+    .then(response => {
+        return response.json();
+    })
+    .then(data => {
+        console.log('Success:', data);
+    })
+    .catch((error) => {
+        console.error('Error:', error);
+    });
+    
+});
+
+
+
+</script>
+
+</body>
+</html>
